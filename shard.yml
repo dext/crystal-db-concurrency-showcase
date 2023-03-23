@@ -16,3 +16,5 @@ dependencies:
     github: will/crystal-pg
   sqlite3:
     github: crystal-lang/crystal-sqlite3
+  mysql:
+    github: crystal-lang/crystal-mysql

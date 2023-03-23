@@ -7,6 +7,8 @@ Reproducing an issue with multiple concurrent queries to a database as described
 
 - [Crystal](crystal-lang.org) (known to work with v.1.7)
 - [Postgres](https://www.postgresql.org/) server (known to work with v.14.7)
+- Optional: [MySQL](https://www.mysql.com/) server (known to work with MariaDB v.10.6)
+- GNU make
 
 ## Setup
 
@@ -17,8 +19,8 @@ make deps
 make dotenv
 
 # Now:
-#   1. Tune your `.env` and `.env.test` files
-#   2. Create a database on Postgres; then continue.
+#  1. Tune your `.env` and `.env.test` files;
+#  2. Create a database on Postgres (optionally, on MySQL).
 
 make spec # optional sanity check
 make
@@ -37,15 +39,21 @@ Create a `.env` (will also create a `.env.test`):
 ```
 make dotenv
 ```
-Tune the `SHOWCASE_DB_URI` variable in `.env` and `.env.test` to suite your environment. Both
-_Postgres_ and _SQLite_ are supported as database backends, the default is _Postgres_.
+Tune the `SHOWCASE_DB_URI` variable in `.env` and `.env.test` to suite your environment.
 
-### 3. Create the Postgres database
+Supported backends:
+- _Postgres_ -- the default;
+- _MySQL_ -- optional;
+- _SQLite_.
 
-For running on _Postgres_ you need to create the development database (and optionally, the
-test database for the specs).
+### 3. Create databases
 
-On Debian-based Linux OS this should work:
+For running on _Postgres_ or _MySQL_, you need to create the development database (and
+optionally, the test database for running the specs).
+
+**Postgres:**
+
+On Debian-based Linux OS this should do it:
 ```
 sudo -iu postgres
 psql
@@ -56,12 +64,29 @@ exit
 exit
 ```
 
+**MySQL:**
+
+On Debian-based Linux OS this should do it:
+```
+mysql -u <dbuser> -p
+> create database showcase_development;
+> create database showcase_test;
+> exit
+```
+
+`<dbuser>` is a MySQL user having the CREATE privilege (e.g. `root`).
+
+**SQLite:**
+
+No need to do anything, the database files would appear in `./db/` automatically. To drop a
+database, just delete the corresponding file.
+
 ### 4. Run the specs
 This step is optional.
 
-Doublecheck your `.env.test` settings. If you want to run the specs against both a _Postgres_
-and a _SQLite_ database, you need to execute this step twise, each time tuning you `.env.test`
-to point to a different db backend.
+Doublecheck your `.env.test` settings. If you want to run the specs against more than one
+backend, you need to execute this step more than once, each time tuning you `.env.test` to
+point to a different database backend.
 
 Run the specs:
 ```
@@ -82,12 +107,13 @@ They both have a help screen shown with `-h`.
 
 ### 6. Seed the database
 
-Double-check your `.env` settings. If you want to run the `showcase` app against both a
-_Postgres_ and a _SQLite_ database, you need to execute this step twise, each time tuning you
-`.env` to point to a different db backend.
+Doublecheck your `.env` settings. If you want to run the specs against more than one backend,
+you need to execute this step more than once, each time tuning you `.env.test` to point to a
+different database backend.
 
 On decent hardware seeding takes:
 - ~3 min for Postgres;
+- ~2 min for MySQL/MariaDB;
 - ~15 min for SQLite;
 
 To do the seeding:
@@ -101,11 +127,11 @@ You should have completed the Setup procedure explained above to run the showcas
 your `.env` file.
 
 Running the showcase app against a Postgres db backend prepared as explained above should reveal
-the issue with the linenarly growing query round trip times. A hundred concurrent queries should
+the issue with the linearly growing query round trip times. A hundred concurrent queries should
 demonstrate it:
 
 ```
-bin/showcase -c100 # 100 (alomost) simultaneous queries
+bin/showcase -c100 # 100 almost simultaneous queries
 ```
 
 The available options are explained in the help page:
@@ -118,8 +144,12 @@ bin/showcase -h
 
 The issue we want to resolve is described [here](https://forum.crystal-lang.org/t/concurrency-issues-with-an-api-server/5482).
 
-For Postgres, a typical run would look like
+For Postgres, a typical 100 queries run would look like
 ```
+I: Spawning 100 requests...
+I: Received 1 (idx=46) team_id=1 size=44000 time=0.3s
+I: Received 2 (idx=84) team_id=2 size=33000 time=0.32s
+I: Received 3 (idx=87) team_id=3 size=33000 time=0.34s
 .
 .
 I: Received 98 (idx=3) team_id=2 size=33000 time=6.47s
@@ -151,6 +181,9 @@ I: Received 100 (idx=59) team_id=2 size=33000 time=0.03s
 I: Total time: 3.0s
 ```
 The times per query processing do not grow and all fibers eventually come back.
+
+Experiment show that on MySQL the times grow similarly to the Postgres backend and often some
+fibers get lost as well.
 
 ## Development
 
