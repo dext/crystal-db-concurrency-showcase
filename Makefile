@@ -3,7 +3,7 @@ MODEL_SRC := $(wildcard src/model/*.cr)
 SEED_TOOL_SRC := $(wildcard src/seed_tool/*.cr)
 SEED_TOOL_SRC += $(MODEL_SRC)
 
-SHOWCASE_SRC := $(wildcard src/showcase/*.cr)
+SHOWCASE_SRC := $(wildcard src/app/*.cr)
 SHOWCASE_SRC += $(MODEL_SRC)
 
 all: seed-tool showcase
